@@ -2,15 +2,22 @@ package com.github.stuartwouglas.repoexplorer.service;
 
 import com.github.stuartwouglas.repoexplorer.model.Artifact;
 import com.github.stuartwouglas.repoexplorer.model.ArtifactDependency;
+import com.github.stuartwouglas.repoexplorer.model.Repository;
 import com.github.stuartwouglas.repoexplorer.model.RepositoryTag;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import javax.transaction.UserTransaction;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -74,6 +81,14 @@ public class MavenProjectArtifactDiscovery {
                                 dependency.artifact = artifact;
                                 artifact.dependencies.add(dependency);
                                 dependency.persistAndFlush();
+                                System.out.println(Arrays.toString(parts));
+
+                                String jarFileName = parts[5];
+                                String pomFileName = jarFileName.substring(0, jarFileName.lastIndexOf(".jar")) + ".pom";
+                                System.out.println("POM:" + pomFileName);
+                                if (Files.isRegularFile(Paths.get(pomFileName))) {
+                                    handlePomFile(pomFileName);
+                                }
                             }
                         }
                         return FileVisitResult.CONTINUE;
@@ -96,6 +111,40 @@ public class MavenProjectArtifactDiscovery {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void handlePomFile(String pomFileName) {
+
+        try (InputStream in = Files.newInputStream(Paths.get(pomFileName))) {
+
+            DocumentBuilderFactory factory =
+                    DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(in);
+            System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
+            NodeList nList = doc.getElementsByTagName("scm");
+
+            for (int i = 0; i < nList.getLength(); ++i) {
+                var node = nList.item(i);
+                for (int j = 0; j < node.getChildNodes().getLength(); ++j) {
+                    Node conNode = node.getChildNodes().item(j);
+                    if (conNode.getNodeName().equals("connection")) {
+                        String text = conNode.getTextContent();
+                        if (text.startsWith("scm:git:")) {
+                            String uri = text.substring("scm:git:".length());
+                            if (Repository.find("uri", uri).list().isEmpty()) {
+                                Repository r = new Repository();
+                                r.uri = uri;
+                                r.persistAndFlush();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

@@ -18,4 +18,7 @@ public class Repository extends PanacheEntity {
 
     @OneToMany(mappedBy = "repository")
     public List<RepositoryTag> tags;
+
+    @Column(nullable = false)
+    public boolean discoveryAttempted;
 }
