@@ -5,6 +5,8 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import java.util.List;
 
 @Entity
 public class RepositoryTag extends PanacheEntity {
@@ -15,7 +17,10 @@ public class RepositoryTag extends PanacheEntity {
     @Column(nullable = false)
     public String ref;
 
-    @ManyToOne
+    @ManyToOne(optional = false)
     public Repository repository;
+
+    @OneToMany(mappedBy = "tag")
+    public List<Artifact> artifacts;
 
 }

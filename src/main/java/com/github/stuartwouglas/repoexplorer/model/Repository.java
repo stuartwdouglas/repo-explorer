@@ -16,6 +16,6 @@ public class Repository extends PanacheEntity {
     @Column(nullable = true)
     public String name;
 
-    @OneToMany
+    @OneToMany(mappedBy = "repository")
     public List<RepositoryTag> tags;
 }
