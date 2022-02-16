@@ -5,8 +5,17 @@ import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
 
+import javax.inject.Inject;
+
 @QuarkusMain
 public class TestRunner implements QuarkusApplication {
+
+    final CloneHandler cloneHandler;
+
+    @Inject
+    public TestRunner(CloneHandler cloneHandler) {
+        this.cloneHandler = cloneHandler;
+    }
 
     public static void main(String ... args ) throws Exception {
         Quarkus.run(TestRunner.class, args);
@@ -14,7 +23,7 @@ public class TestRunner implements QuarkusApplication {
 
     @Override
     public int run(String... args) throws Exception {
-        CloneHandler.doCheckout();
+        cloneHandler.doClone("file:///home/stuart/workspace/gizmo");
         return 0;
     }
 }

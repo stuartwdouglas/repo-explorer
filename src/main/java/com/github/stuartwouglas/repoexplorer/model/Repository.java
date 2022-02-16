@@ -10,8 +10,8 @@ import java.util.List;
 @Entity
 public class Repository extends PanacheEntity {
 
-    @Column(nullable = false)
-    public String url;
+    @Column(nullable = false, unique = true)
+    public String uri;
 
     @Column(nullable = true)
     public String name;

@@ -1,27 +1,48 @@
 package com.github.stuartwouglas.repoexplorer;
 
-import org.eclipse.jgit.api.CloneCommand;
-import org.eclipse.jgit.api.Git;
+import com.github.stuartwouglas.repoexplorer.model.Repository;
+import com.github.stuartwouglas.repoexplorer.model.RepositoryTag;
+import com.github.stuartwouglas.repoexplorer.service.LocalClone;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import javax.enterprise.context.ApplicationScoped;
+import javax.transaction.Transactional;
+import java.util.HashMap;
+import java.util.Map;
 
+@ApplicationScoped
 public class CloneHandler {
 
-    public static void main(String... args) throws Exception {
-        doCheckout();
-    }
+    public static final String REFS_TAGS = "refs/tags/";
 
-    public static void doCheckout() throws Exception {
-        Path temp = Files.createTempDirectory("test");
-        Git result = new CloneCommand()
-                .setDirectory(temp.toFile())
-                .setURI("file:///home/stuart/workspace/gizmo")
-                .call();
-        for (var ref : result.tagList().call()) {
-            String name = ref.getName();
+    @Transactional
+    public void doClone(String uri) throws Exception {
+        try (LocalClone checkout = LocalClone.clone(uri)) {
+            Repository existing = Repository.find("uri", uri).firstResult();
+            Map<String, String> knownTags = new HashMap<>();
+            if (existing == null) {
+                Repository r = new Repository();
+                r.uri = uri;
+                r.persist();
+            } else {
+                for (var tag : existing.tags) {
+                    knownTags.put(tag.name, tag.ref);
+                }
+            }
 
-            System.out.println("NAME: " + ref.getName() + " " + ref.getObjectId().getName());
+            for (var ref : checkout.getGit().tagList().call()) {
+                String name = ref.getName();
+                if (name.startsWith(REFS_TAGS)) {
+                    name = name.substring(REFS_TAGS.length());
+                }
+                if (!knownTags.containsKey(name)) {
+                    RepositoryTag tag = new RepositoryTag();
+                    tag.name = name;
+                    tag.ref = ref.getObjectId().getName();
+                    tag.repository = existing;
+                    tag.persist();
+                }
+                System.out.println("NAME: " + ref.getName() + " " + ref.getObjectId().getName());
+            }
         }
     }
 
