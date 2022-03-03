@@ -12,7 +12,7 @@ import javax.inject.Inject;
 import javax.transaction.UserTransaction;
 import java.util.List;
 
-@QuarkusMain
+//@QuarkusMain
 public class TestRunner implements QuarkusApplication {
 
     final RepositoryDiscoveryService cloneHandler;

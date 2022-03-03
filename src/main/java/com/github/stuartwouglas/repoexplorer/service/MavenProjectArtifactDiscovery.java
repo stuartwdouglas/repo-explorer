@@ -118,8 +118,7 @@ public class MavenProjectArtifactDiscovery {
 
         try (InputStream in = Files.newInputStream(Paths.get(pomFileName))) {
 
-            DocumentBuilderFactory factory =
-                    DocumentBuilderFactory.newInstance();
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document doc = builder.parse(in);
             System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
