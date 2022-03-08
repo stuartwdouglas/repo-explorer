@@ -4,6 +4,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import java.util.List;
 
@@ -21,4 +22,9 @@ public class Repository extends PanacheEntity {
 
     @Column(nullable = false)
     public boolean discoveryAttempted;
+
+    @ManyToOne
+    public GithubOrg githubOrg;
+
+    public String language;
 }

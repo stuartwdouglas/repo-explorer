@@ -1,10 +1,13 @@
 package com.github.stuartwouglas.repoexplorer.model;
 
+import io.quarkus.arc.Unremovable;
+
 import javax.transaction.TransactionScoped;
 import java.util.HashMap;
 import java.util.Map;
 
 @TransactionScoped
+@Unremovable
 public class Cache {
     final Map<String, Map<String, Map<String, Artifact>>> cache = new HashMap<>();
 

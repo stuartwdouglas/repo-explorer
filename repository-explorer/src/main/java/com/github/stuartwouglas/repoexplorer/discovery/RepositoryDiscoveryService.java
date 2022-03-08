@@ -5,6 +5,7 @@ import com.github.stuartwouglas.repoexplorer.model.RepositoryTag;
 import com.github.stuartwouglas.repoexplorer.service.LocalClone;
 import com.github.stuartwouglas.repoexplorer.service.MavenProjectArtifactDiscovery;
 import io.quarkus.logging.Log;
+import org.eclipse.jgit.api.ResetCommand;
 import org.jboss.logging.Logger;
 
 import javax.inject.Singleton;
@@ -72,15 +73,15 @@ public class RepositoryDiscoveryService {
                         existing.tags.add(tag);
                         newTags.add(tag);
                     }
-                    System.out.println("NAME: " + ref.getName() + " " + ref.getObjectId().getName());
                 }
                 userTransaction.commit();
                 for (var tag : newTags) {
+                    checkout.getGit().reset().setMode(ResetCommand.ResetType.HARD).call();
                     checkout.getGit().checkout().setName(tag.ref).call();
                     try {
                         task.accept(checkout, tag);
                     } catch (Throwable t) {
-                        Log.error("Failed to process " + tag.name, t);
+                        Log.error("Failed to process " + tag.repository.uri +" tag: " + tag.name, t);
                     }
                 }
             } catch (Throwable t) {

@@ -13,7 +13,7 @@ public class ArtifactTagMapping extends PanacheEntity {
     /**
      * TODO: should be many to one?
      */
-    @OneToOne(optional = false)
+    @ManyToOne(optional = false)
     @JoinColumn
     public Artifact artifact;
     /**

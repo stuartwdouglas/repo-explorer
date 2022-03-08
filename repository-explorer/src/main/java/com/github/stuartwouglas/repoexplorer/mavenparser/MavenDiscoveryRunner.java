@@ -1,44 +1,75 @@
 package com.github.stuartwouglas.repoexplorer.mavenparser;
 
 import com.github.stuartwouglas.repoexplorer.discovery.RepositoryDiscoveryService;
-import com.github.stuartwouglas.repoexplorer.model.Artifact;
-import com.github.stuartwouglas.repoexplorer.model.ArtifactTagMapping;
-import com.github.stuartwouglas.repoexplorer.model.RepositoryTag;
-import com.github.stuartwouglas.repoexplorer.service.MavenProjectArtifactDiscovery;
-import io.quarkus.runtime.Quarkus;
-import io.quarkus.runtime.QuarkusApplication;
+import com.github.stuartwouglas.repoexplorer.github.RepositoryAddedEvent;
+import com.github.stuartwouglas.repoexplorer.model.Repository;
+import io.quarkus.logging.Log;
+import io.quarkus.panache.common.Parameters;
+import io.quarkus.runtime.ExecutorRecorder;
 
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.control.ActivateRequestContext;
+import javax.enterprise.event.Observes;
+import javax.enterprise.event.TransactionPhase;
+import javax.transaction.UserTransaction;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-public class MavenDiscoveryRunner implements QuarkusApplication {
-
-    public MavenDiscoveryRunner(MavenDiscovery mavenDiscovery, RepositoryDiscoveryService cloneHandler) {
-        this.mavenDiscovery = mavenDiscovery;
-        this.cloneHandler = cloneHandler;
-    }
-
-    public static void main(String ... args) {
-        Quarkus.run(MavenDiscoveryRunner.class, args);
-    }
+@ApplicationScoped
+public class MavenDiscoveryRunner {
 
     final MavenDiscovery mavenDiscovery;
     final RepositoryDiscoveryService cloneHandler;
+    final UserTransaction userTransaction;
+    final Lock lock = new ReentrantLock();
 
-    @Override
+    public MavenDiscoveryRunner(MavenDiscovery mavenDiscovery, RepositoryDiscoveryService cloneHandler, UserTransaction userTransaction) {
+        this.mavenDiscovery = mavenDiscovery;
+        this.cloneHandler = cloneHandler;
+        this.userTransaction = userTransaction;
+    }
+    void handleAdded(@Observes(during = TransactionPhase.AFTER_SUCCESS) RepositoryAddedEvent event) throws Exception {
+        ExecutorRecorder.getCurrent().execute(this::run);
+    }
+
     @ActivateRequestContext
-    public int run(String... args) throws Exception {
+    public void run() {
+        if (!lock.tryLock()) {
+            return;
+        }
+        try {
 
-        cloneHandler.discoveryTask("file:///home/stuart/workspace/quarkus", (checkout, tag) -> {
-            mavenDiscovery.doRepositoryDiscovery(checkout, "", tag);
-        });
-//        RepositoryTag tag = new RepositoryTag();
-//        mavenDiscovery.doRepositoryDiscovery("/home/stuart/workspace/apicurio-registry/pom.xml", tag);
-        for (Artifact artifact : Artifact.<Artifact>findAll().list()) {
-                        System.out.println("\t\t\tDependency': " + artifact.groupId + ":" + artifact.artifactId + ":" + artifact.version);
+            for (; ; ) {
+                List<Repository> unprocessed = Repository.list("discoveryAttempted=false and (language is null or language='Java')");
+                if (unprocessed.isEmpty()) {
+                    break;
+                }
+                for (var r : unprocessed) {
+                    try {
+                        Log.infof("Processing repository %s", r.uri);
+                        cloneHandler.discoveryTask(r, (checkout, tag) -> {
+                            mavenDiscovery.doRepositoryDiscovery(checkout, "", tag);
+                        });
+                    } catch (Throwable t) {
+                        Log.error("Failed to process repo " + r.uri, t);
+                    }
+                    userTransaction.begin();
+                    try {
+                        Repository loaded = Repository.findById(r.id);
+                        loaded.discoveryAttempted = true;
+                        userTransaction.commit();
+                    } catch (Throwable tx) {
+                        userTransaction.rollback();
+                        throw new RuntimeException(tx);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            lock.unlock();
         }
-        for (ArtifactTagMapping artifact : ArtifactTagMapping.<ArtifactTagMapping>findAll().list()) {
-            System.out.println("\t\t\tTAg': " + artifact.repositoryTag.name + " : " + artifact.artifact.artifactId);
-        }
-        return 0;
+        Log.infof("Processing done");
     }
 }

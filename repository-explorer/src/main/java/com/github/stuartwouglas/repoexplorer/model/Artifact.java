@@ -51,5 +51,9 @@ public class Artifact extends PanacheEntity {
         return artifact;
     }
 
+    @Override
+    public String toString() {
+        return artifactId + ':' + groupId + ':' + version;
+    }
 }
 
