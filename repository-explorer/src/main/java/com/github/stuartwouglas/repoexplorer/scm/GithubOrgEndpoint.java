@@ -1,4 +1,4 @@
-package com.github.stuartwouglas.repoexplorer.github;
+package com.github.stuartwouglas.repoexplorer.scm;
 
 import com.github.stuartwouglas.repoexplorer.model.GithubOrg;
 import com.github.stuartwouglas.repoexplorer.model.Repository;

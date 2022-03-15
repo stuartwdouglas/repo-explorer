@@ -5,10 +5,12 @@ import com.github.stuartwouglas.repoexplorer.model.ArtifactDependency;
 import com.github.stuartwouglas.repoexplorer.model.ArtifactTagMapping;
 import com.github.stuartwouglas.repoexplorer.model.RepositoryTag;
 import com.github.stuartwouglas.repoexplorer.service.LocalClone;
+import com.github.stuartwouglas.repoexplorer.utils.PropertyReplacer;
 import io.quarkus.logging.Log;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.eclipse.jgit.api.Git;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.transaction.Transactional;
@@ -16,6 +18,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -76,15 +79,8 @@ public class MavenDiscovery {
             for (var dependency : model.getDependencies()) {
                 String iv = null;
                 if (dependency.getVersion() != null) {
-                    Matcher matcher = Pattern.compile("\\$\\{(a:.*?)}").matcher(dependency.getVersion());
-                    iv = matcher.replaceAll(s -> {
-                        String result = properties.get(s.group(1));
-                        if (result == null) {
-                            return "MISSING";
-                        }
-                        return result;
-                    });
-                    if (iv.equals("MISSING")) {
+                    iv = PropertyReplacer.replace(dependency.getVersion(), properties);
+                    if (iv.equals(PropertyReplacer.MISSING)) {
                         continue;
                     }
                     Artifact dep = Artifact.findOrCreate(dependency.getGroupId(), dependency.getArtifactId(), iv);
@@ -98,13 +94,7 @@ public class MavenDiscovery {
                     String iv = null;
                     if (dependency.getVersion() != null) {
                         Matcher matcher = Pattern.compile("\\$\\{(.*?)}").matcher(dependency.getVersion());
-                        iv = matcher.replaceAll(s -> {
-                            String result = properties.get(s.group(1));
-                            if (result == null) {
-                                return "MISSING";
-                            }
-                            return result;
-                        });
+                        iv = PropertyReplacer.replace(dependency.getVersion(), properties);
                         if (iv.equals("MISSING")) {
                             continue;
                         }
@@ -121,4 +111,5 @@ public class MavenDiscovery {
             throw new RuntimeException(e);
         }
     }
+
 }

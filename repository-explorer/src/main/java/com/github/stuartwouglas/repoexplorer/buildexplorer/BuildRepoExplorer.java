@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -93,6 +94,10 @@ public class BuildRepoExplorer {
             if (ArtifactTagMapping.find("artifact", i).firstResult() == null) {
                 ret.add(new Result(i.groupId, i.artifactId, i.version, false));
             }
+        }
+        Collections.sort(ret);
+        for (var i : ret) {
+            System.out.println(i.groupId + ":" + i.artifactId + ":" + i.version + ":" + i.jarRequired);
         }
         return ret;
 

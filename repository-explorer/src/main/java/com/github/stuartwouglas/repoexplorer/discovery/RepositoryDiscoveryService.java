@@ -6,10 +6,12 @@ import com.github.stuartwouglas.repoexplorer.service.LocalClone;
 import com.github.stuartwouglas.repoexplorer.service.MavenProjectArtifactDiscovery;
 import io.quarkus.logging.Log;
 import org.eclipse.jgit.api.ResetCommand;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.inject.Singleton;
 import javax.transaction.UserTransaction;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +25,8 @@ public class RepositoryDiscoveryService {
     public static final String REFS_TAGS = "refs/tags/";
 
     final UserTransaction userTransaction;
+    @ConfigProperty(name = "checkout-dir")
+    Path checkoutDir;
 
     public RepositoryDiscoveryService(UserTransaction userTransaction) {
         this.userTransaction = userTransaction;
@@ -47,7 +51,10 @@ public class RepositoryDiscoveryService {
     }
 
     public void discoveryTask(Repository existing, BiConsumer<LocalClone, RepositoryTag> task) throws Exception {
-        try (LocalClone checkout = LocalClone.clone(existing.uri)) {
+        try (LocalClone checkout = LocalClone.clone(existing.uri, existing.checkoutPath, checkoutDir)) {
+            if (existing.checkoutPath == null) {
+                existing.checkoutPath = checkout.getClone().toAbsolutePath().toString();
+            }
             Map<String, String> knownTags = new HashMap<>();
             List<RepositoryTag> newTags = new ArrayList<>();
             userTransaction.begin();

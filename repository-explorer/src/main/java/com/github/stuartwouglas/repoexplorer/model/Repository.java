@@ -27,4 +27,6 @@ public class Repository extends PanacheEntity {
     public GithubOrg githubOrg;
 
     public String language;
+
+    public String checkoutPath;
 }

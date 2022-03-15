@@ -1,10 +1,9 @@
 package com.github.stuartwouglas.repoexplorer.mavenparser;
 
 import com.github.stuartwouglas.repoexplorer.discovery.RepositoryDiscoveryService;
-import com.github.stuartwouglas.repoexplorer.github.RepositoryAddedEvent;
+import com.github.stuartwouglas.repoexplorer.scm.RepositoryAddedEvent;
 import com.github.stuartwouglas.repoexplorer.model.Repository;
 import io.quarkus.logging.Log;
-import io.quarkus.panache.common.Parameters;
 import io.quarkus.runtime.ExecutorRecorder;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -29,7 +28,12 @@ public class MavenDiscoveryRunner {
         this.cloneHandler = cloneHandler;
         this.userTransaction = userTransaction;
     }
+
     void handleAdded(@Observes(during = TransactionPhase.AFTER_SUCCESS) RepositoryAddedEvent event) throws Exception {
+        ExecutorRecorder.getCurrent().execute(this::run);
+    }
+
+    public void trigger() {
         ExecutorRecorder.getCurrent().execute(this::run);
     }
 
